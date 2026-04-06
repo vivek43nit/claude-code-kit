@@ -61,10 +61,12 @@ GUIDE_DST="$TARGET/guidelines"
 
 mkdir -p "$GUIDE_DST"
 
+SKIPPED_GUIDELINES=()
 for f in "$GUIDE_SRC"/*.md; do
     name=$(basename "$f")
     [ "$name" = "active.md" ] && continue  # Skip generated file
     if [ -f "$GUIDE_DST/$name" ]; then
+        SKIPPED_GUIDELINES+=("guidelines/$name")
         echo "  [SKIP] $GUIDE_DST/$name already exists (not overwriting)"
     else
         cp "$f" "$GUIDE_DST/$name"
@@ -189,3 +191,27 @@ echo "  1. Copy the CI template above"
 echo "  2. Open Claude Code in $TARGET"
 echo "  3. Run /reload-plugins"
 echo "  4. Start a session — languages will auto-detect and populate guidelines/active.md"
+
+if [ ${#SKIPPED_GUIDELINES[@]} -gt 0 ]; then
+    echo ""
+    echo "────────────────────────────────────────────────────────"
+    echo "⚠  ${#SKIPPED_GUIDELINES[@]} guideline file(s) already existed and were not overwritten:"
+    for f in "${SKIPPED_GUIDELINES[@]}"; do
+        echo "     · $f"
+    done
+    echo ""
+    echo "  These may be outdated if this project used an older version of claude-code-kit."
+    echo "  To review and update them, open Claude Code in $TARGET and run:"
+    echo ""
+    FILE_LIST=""
+    for f in "${SKIPPED_GUIDELINES[@]}"; do
+        FILE_LIST="${FILE_LIST:+$FILE_LIST }$f"
+    done
+    echo "    claude \"Fetch the latest versions of: $FILE_LIST"
+    echo "    from https://raw.githubusercontent.com/vivek43nit/claude-code-kit/main/"
+    echo "    and compare each to my local copy. Update any that are outdated."
+    echo "    Do not modify files that are not in that list.\""
+    echo ""
+    echo "  Claude fetches directly from GitHub — no local clone needed."
+    echo "────────────────────────────────────────────────────────"
+fi
