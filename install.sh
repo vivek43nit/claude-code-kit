@@ -8,8 +8,12 @@
 # What it does:
 #   1. Copies .claude/hooks/ to target project
 #   2. Copies guidelines/ (language guideline files) to target project
-#   3. Merges plugin config into target .claude/settings.json
-#   4. Prints CI template copy instructions
+#   3. Merges .claude/settings.json hooks (creates if absent; merges with jq if present)
+#   4. Merges CLAUDE.md guideline imports (creates if absent; appends if present)
+#   5. Runs language detection immediately (populates guidelines/active.md)
+#   6. Prints CI template copy instructions
+#
+# Safe on existing projects — never overwrites or deletes user files.
 
 set -euo pipefail
 
@@ -85,10 +89,27 @@ mkdir -p "$TARGET/.claude"
 if [ ! -f "$SETTINGS_DST" ]; then
     cp "$SETTINGS_SRC" "$SETTINGS_DST"
     echo "  [OK]   Created .claude/settings.json"
+elif command -v jq &>/dev/null; then
+    if jq -e '[.hooks.UserPromptSubmit[]?.hooks[]?] | map(select(.command == "bash .claude/hooks/detect-languages.sh")) | length > 0' "$SETTINGS_DST" &>/dev/null; then
+        echo "  [SKIP] .claude/settings.json already contains claude-code-kit hooks"
+    else
+        tmp="$(mktemp)"
+        jq '
+          .hooks.UserPromptSubmit = ((.hooks.UserPromptSubmit // []) + [{"hooks": [{"type": "command", "command": "bash .claude/hooks/detect-languages.sh"}]}]) |
+          .hooks.PreToolUse = ((.hooks.PreToolUse // []) + [{"matcher": "Write|Edit", "hooks": [{"type": "command", "command": "bash .claude/hooks/security-scan.sh"}]}])
+        ' "$SETTINGS_DST" > "$tmp"
+        if [ -s "$tmp" ]; then
+            mv "$tmp" "$SETTINGS_DST"
+            echo "  [OK]   Merged claude-code-kit hooks into existing .claude/settings.json"
+        else
+            rm -f "$tmp"
+            echo "  [WARN] jq merge produced empty output — .claude/settings.json unchanged"
+            echo "         Add hooks manually from: $SETTINGS_SRC"
+        fi
+    fi
 else
-    echo "  [WARN] .claude/settings.json already exists."
-    echo "         Manually merge hooks from: $SETTINGS_SRC"
-    echo "         Hooks to add:"
+    echo "  [WARN] .claude/settings.json already exists and jq is not installed."
+    echo "         Install jq (brew install jq / apt install jq) and re-run to auto-merge, or add manually:"
     echo '           "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "bash .claude/hooks/detect-languages.sh"}]}]'
     echo '           "PreToolUse" (matcher Write|Edit): [{"hooks": [{"type": "command", "command": "bash .claude/hooks/security-scan.sh"}]}]'
 fi
@@ -110,7 +131,45 @@ else
     echo "  [OK]   Created .gitignore with guidelines/active.md"
 fi
 
-# ── 5. CI instructions ────────────────────────────────────────────────────
+# ── 5. CLAUDE.md ──────────────────────────────────────────────────────────────
+
+CLAUDE_MD_DST="$TARGET/CLAUDE.md"
+CLAUDE_MD_SRC="$SOURCE_DIR/CLAUDE.md"
+
+if [ ! -f "$CLAUDE_MD_DST" ]; then
+    cp "$CLAUDE_MD_SRC" "$CLAUDE_MD_DST"
+    echo "  [OK]   Copied CLAUDE.md"
+elif grep -q "@guidelines/active.md" "$CLAUDE_MD_DST"; then
+    echo "  [SKIP] CLAUDE.md already references @guidelines/active.md"
+else
+    cat >> "$CLAUDE_MD_DST" <<'KITEOF'
+
+---
+
+<!-- Added by claude-code-kit — https://github.com/vivek43nit/claude-code-kit -->
+
+## Active Language Guidelines
+
+@guidelines/active.md
+
+## Universal Guidelines
+
+@guidelines/base.md
+KITEOF
+    echo "  [OK]   Merged claude-code-kit guideline imports into existing CLAUDE.md"
+fi
+
+# ── 6. Language detection ─────────────────────────────────────────────────────
+
+echo ""
+echo "Running language detection..."
+if (cd "$TARGET" && bash .claude/hooks/detect-languages.sh 2>/dev/null); then
+    echo "  [OK]   guidelines/active.md populated"
+else
+    echo "  [WARN] Language detection failed — will run automatically on first Claude Code session"
+fi
+
+# ── 7. CI instructions ────────────────────────────────────────────────────
 
 echo ""
 echo "────────────────────────────────────────────────────────"
