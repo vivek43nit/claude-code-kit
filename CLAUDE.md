@@ -94,6 +94,21 @@ not block by default.
 > Edit `.claude/hooks/security-scan.sh` and change the last line from `exit 0` to `exit 2`.
 > With `exit 2`, Claude will be blocked from writing the file until the issue is resolved.
 
+## README Maintenance Rule
+
+**Any change to installer behaviour, user-facing output, or project structure must include a README update in the same PR/commit.**
+
+This applies to changes in:
+- `install.sh` or `remote-install.sh` — new flags, new output, changed behaviour
+- `guidelines/` — new files, renamed files, removed files
+- `.claude/hooks/` — new hooks or changed hook behaviour
+- CI templates in `ci/`
+- Any new user-facing feature or option
+
+When writing a plan that touches any of the above, always include a README task. When executing inline, always check README before marking work complete.
+
+---
+
 ## For New Projects
 
 Run from this repo:
