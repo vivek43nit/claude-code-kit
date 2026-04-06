@@ -66,6 +66,12 @@ curl -fsSL https://raw.githubusercontent.com/vivek43nit/claude-code-kit/main/ci/
 Open Claude Code in your project, run `/reload-plugins`, and start a session.
 Language detection runs automatically — no further configuration needed.
 
+> **Existing projects:** Safe to run on projects that already have files.
+> - **`CLAUDE.md`** — guideline imports are **appended**, your existing content is untouched.
+> - **`.claude/settings.json`** — hooks are **merged** automatically if `jq` is installed (`brew install jq` / `apt install jq`). Without `jq`, manual merge instructions are printed.
+> - **All other files** — skipped if they already exist (re-running is always safe).
+> - **Language detection** runs immediately so `guidelines/active.md` is ready before your first session.
+
 <details>
 <summary>Alternative: clone and run locally</summary>
 
