@@ -69,7 +69,7 @@ Language detection runs automatically — no further configuration needed.
 > **Existing projects:** Safe to run on projects that already have files.
 > - **`CLAUDE.md`** — guideline imports are **appended**, your existing content is untouched.
 > - **`.claude/settings.json`** — hooks are **merged** automatically if `jq` is installed (`brew install jq` / `apt install jq`). Without `jq`, manual merge instructions are printed.
-> - **All other files** — skipped if they already exist (re-running is always safe).
+> - **`guidelines/*.md`** — skipped if they already exist. If any are skipped, the installer prints a ready-to-run `claude` command that fetches the latest versions from GitHub and updates outdated kit files — no local clone needed.
 > - **Language detection** runs immediately so `guidelines/active.md` is ready before your first session.
 
 <details>
