@@ -10,15 +10,6 @@ are auto-selected based on detected languages in the project.
 ## Universal Guidelines
 
 @guidelines/base.md
-@guidelines/observability.md
-@guidelines/database.md
-@guidelines/api-design.md
-@guidelines/testing.md
-@guidelines/branching.md
-@guidelines/dependencies.md
-@guidelines/adr.md
-@guidelines/feature-flags.md
-@guidelines/incidents.md
 
 ---
 

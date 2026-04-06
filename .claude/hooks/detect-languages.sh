@@ -78,6 +78,44 @@ fi
 
 # --- Write active.md ---
 
+inject_if_exists() {
+    local guide="$GUIDELINES_DIR/$1"
+    if [ -f "$guide" ]; then
+        echo "---"
+        echo ""
+        cat "$guide"
+        echo ""
+    fi
+}
+
+# --- Signal detection for conditional guidelines ---
+
+is_web_or_api=false
+if [ -f "$PROJECT_ROOT/Dockerfile" ] || [ -f "$PROJECT_ROOT/docker-compose.yml" ] || \
+   [ -f "$PROJECT_ROOT/docker-compose.yaml" ] || [ -f "$PROJECT_ROOT/pom.xml" ] || \
+   [ -f "$PROJECT_ROOT/build.gradle" ] || [ -f "$PROJECT_ROOT/build.gradle.kts" ]; then
+    is_web_or_api=true
+fi
+
+is_db=false
+if [ -d "$PROJECT_ROOT/migrations" ] || [ -d "$PROJECT_ROOT/prisma" ] || \
+   [ -f "$PROJECT_ROOT/alembic.ini" ] || [ -d "$PROJECT_ROOT/db" ] || \
+   find "$PROJECT_ROOT" -maxdepth 3 -name "*.sql" 2>/dev/null | grep -q .; then
+    is_db=true
+fi
+
+is_deployment=false
+if [ -f "$PROJECT_ROOT/Dockerfile" ] || [ -f "$PROJECT_ROOT/docker-compose.yml" ] || \
+   [ -f "$PROJECT_ROOT/docker-compose.yaml" ] || [ -d "$PROJECT_ROOT/k8s" ] || \
+   [ -d "$PROJECT_ROOT/kubernetes" ]; then
+    is_deployment=true
+fi
+
+frontend=false
+for lang in "${DETECTED[@]+"${DETECTED[@]}"}"; do
+    [ "$lang" = "typescript" ] || [ "$lang" = "javascript" ] && frontend=true && break
+done
+
 {
     echo "# Active Language Guidelines"
     echo ""
@@ -90,33 +128,41 @@ fi
     else
         echo "**Detected languages:** ${DETECTED[*]}"
         echo ""
-        for lang in "${DETECTED[@]}"; do
-            guide="$GUIDELINES_DIR/$lang.md"
-            if [ -f "$guide" ]; then
-                echo "---"
-                echo ""
-                cat "$guide"
-                echo ""
-            else
-                echo "<!-- No guideline file found for: $lang -->"
-            fi
-        done
-
-        # Accessibility — inject for frontend languages (TypeScript or JavaScript)
-        frontend=false
-        for lang in "${DETECTED[@]}"; do
-            [ "$lang" = "typescript" ] || [ "$lang" = "javascript" ] && frontend=true && break
-        done
-        if $frontend; then
-            guide="$GUIDELINES_DIR/accessibility.md"
-            if [ -f "$guide" ]; then
-                echo "---"
-                echo ""
-                cat "$guide"
-                echo ""
-            fi
-        fi
     fi
+
+    # Language-specific guidelines
+    for lang in "${DETECTED[@]+"${DETECTED[@]}"}"; do
+        inject_if_exists "$lang.md"
+    done
+
+    # Always-on production guidelines
+    inject_if_exists "observability.md"
+    inject_if_exists "testing.md"
+    inject_if_exists "branching.md"
+    inject_if_exists "dependencies.md"
+    inject_if_exists "adr.md"
+
+    # Conditional: web/API signals
+    if $is_web_or_api; then
+        inject_if_exists "api-design.md"
+    fi
+
+    # Conditional: database signals
+    if $is_db; then
+        inject_if_exists "database.md"
+    fi
+
+    # Conditional: deployment signals
+    if $is_deployment; then
+        inject_if_exists "feature-flags.md"
+        inject_if_exists "incidents.md"
+    fi
+
+    # Conditional: frontend signals (TypeScript or JavaScript)
+    if $frontend; then
+        inject_if_exists "accessibility.md"
+    fi
+
 } > "$OUTPUT_FILE"
 
 if [ ${#DETECTED[@]} -eq 0 ]; then
