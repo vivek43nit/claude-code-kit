@@ -10,6 +10,15 @@ are auto-selected based on detected languages in the project.
 ## Universal Guidelines
 
 @guidelines/base.md
+@guidelines/observability.md
+@guidelines/database.md
+@guidelines/api-design.md
+@guidelines/testing.md
+@guidelines/branching.md
+@guidelines/dependencies.md
+@guidelines/adr.md
+@guidelines/feature-flags.md
+@guidelines/incidents.md
 
 ---
 
@@ -43,6 +52,7 @@ Before responding to any request, classify it:
 | Auth, payments, or external API integration | **Plan + Security** | Use `superpowers:writing-plans`, then invoke `security-guidance` before writing code |
 | DB schema design, migrations, or ORM modeling | **Plan + Security** | Use `superpowers:writing-plans`, then invoke `security-guidance` before writing code |
 | App config, env vars, secrets management, infrastructure | **Plan + Security** | Use `superpowers:writing-plans`, then invoke `security-guidance` before writing code |
+| Any UI component or frontend feature | **Plan + Accessibility** | Use `superpowers:writing-plans`; run axe-core check after implementation |
 
 **Rule of thumb:** If you cannot describe the full change in one sentence without saying "and", use plan mode.
 

@@ -101,6 +101,21 @@ fi
                 echo "<!-- No guideline file found for: $lang -->"
             fi
         done
+
+        # Accessibility — inject for frontend languages (TypeScript or JavaScript)
+        frontend=false
+        for lang in "${DETECTED[@]}"; do
+            [ "$lang" = "typescript" ] || [ "$lang" = "javascript" ] && frontend=true && break
+        done
+        if $frontend; then
+            guide="$GUIDELINES_DIR/accessibility.md"
+            if [ -f "$guide" ]; then
+                echo "---"
+                echo ""
+                cat "$guide"
+                echo ""
+            fi
+        fi
     fi
 } > "$OUTPUT_FILE"
 
