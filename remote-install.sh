@@ -69,8 +69,16 @@ chmod +x "$TARGET/.claude/hooks/security-scan.sh"
 
 # ── 1b. Prompts ───────────────────────────────────────────────────────────────
 
+local_prompt="$TARGET/.claude/prompts/audit.md"
 mkdir -p "$TARGET/.claude/prompts"
-fetch_file "prompts/audit.md"
+if [ -f "$local_prompt" ]; then
+    echo "  [SKIP] .claude/prompts/audit.md already exists (not overwriting)"
+elif download "${BASE_URL}/.claude/prompts/audit.md" "$local_prompt" 2>/dev/null; then
+    echo "  [OK]   Downloaded .claude/prompts/audit.md"
+else
+    rm -f "$local_prompt"
+    echo "  [WARN] Could not download .claude/prompts/audit.md — skipping (install the kit manually to get it)"
+fi
 
 # ── 2. Guidelines ─────────────────────────────────────────────────────────────
 
