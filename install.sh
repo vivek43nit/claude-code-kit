@@ -6,7 +6,7 @@
 #   bash install.sh .   (installs into current directory)
 #
 # What it does:
-#   1. Copies .claude/hooks/ to target project
+#   1. Copies .claude/hooks/ and .claude/prompts/ to target project
 #   2. Copies guidelines/ (language guideline files) to target project
 #   3. Merges .claude/settings.json hooks (creates if absent; merges with jq if present)
 #   4. Merges CLAUDE.md guideline imports (creates if absent; appends if present)
@@ -51,6 +51,23 @@ for f in "$HOOKS_SRC"/*.sh; do
         cp "$f" "$HOOKS_DST/$name"
         chmod +x "$HOOKS_DST/$name"
         echo "  [OK]   Copied hook: .claude/hooks/$name"
+    fi
+done
+
+# ── 1b. Copy prompts ──────────────────────────────────────────────────────────
+
+PROMPTS_SRC="$SOURCE_DIR/.claude/prompts"
+PROMPTS_DST="$TARGET/.claude/prompts"
+
+mkdir -p "$PROMPTS_DST"
+
+for f in "$PROMPTS_SRC"/*.md; do
+    name=$(basename "$f")
+    if [ -f "$PROMPTS_DST/$name" ]; then
+        echo "  [SKIP] $PROMPTS_DST/$name already exists (not overwriting)"
+    else
+        cp "$f" "$PROMPTS_DST/$name"
+        echo "  [OK]   Copied prompt: .claude/prompts/$name"
     fi
 done
 
