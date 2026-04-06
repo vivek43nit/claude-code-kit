@@ -10,9 +10,13 @@
 # What it does (identical to install.sh, but sources files from GitHub):
 #   1. Downloads .claude/hooks/ scripts
 #   2. Downloads guidelines/ markdown files
-#   3. Downloads .claude/settings.json and CLAUDE.md
-#   4. Seeds guidelines/active.md and updates .gitignore
-#   5. Prints CI template instructions
+#   3. Merges .claude/settings.json hooks (creates if absent; merges with jq if present)
+#   4. Merges CLAUDE.md guideline imports (creates if absent; appends if present)
+#   5. Seeds guidelines/active.md and updates .gitignore
+#   6. Runs language detection immediately (populates guidelines/active.md)
+#   7. Prints CI template instructions
+#
+# Safe on existing projects — never overwrites or deletes user files.
 
 set -euo pipefail
 
@@ -100,19 +104,59 @@ fi
 # ── 3. settings.json ──────────────────────────────────────────────────────────
 
 SETTINGS_DST="$TARGET/.claude/settings.json"
+
 if [ ! -f "$SETTINGS_DST" ]; then
     fetch_file ".claude/settings.json"
+elif command -v jq &>/dev/null; then
+    if jq -e '[.hooks.UserPromptSubmit[]?.hooks[]?] | map(select(.command == "bash .claude/hooks/detect-languages.sh")) | length > 0' "$SETTINGS_DST" &>/dev/null; then
+        echo "  [SKIP] .claude/settings.json already contains claude-code-kit hooks"
+    else
+        tmp="$(mktemp)"
+        jq '
+          .hooks.UserPromptSubmit = ((.hooks.UserPromptSubmit // []) + [{"hooks": [{"type": "command", "command": "bash .claude/hooks/detect-languages.sh"}]}]) |
+          .hooks.PreToolUse = ((.hooks.PreToolUse // []) + [{"matcher": "Write|Edit", "hooks": [{"type": "command", "command": "bash .claude/hooks/security-scan.sh"}]}])
+        ' "$SETTINGS_DST" > "$tmp"
+        if [ -s "$tmp" ]; then
+            mv "$tmp" "$SETTINGS_DST"
+            echo "  [OK]   Merged claude-code-kit hooks into existing .claude/settings.json"
+        else
+            rm -f "$tmp"
+            echo "  [WARN] jq merge produced empty output — .claude/settings.json unchanged"
+            echo "         Add hooks manually from: ${BASE_URL}/.claude/settings.json"
+        fi
+    fi
 else
-    echo "  [WARN] .claude/settings.json already exists."
-    echo "         Manually merge hooks from: ${BASE_URL}/.claude/settings.json"
-    echo "         Hooks to add:"
+    echo "  [WARN] .claude/settings.json already exists and jq is not installed."
+    echo "         Install jq (brew install jq / apt install jq) and re-run to auto-merge, or add manually:"
     echo '           "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "bash .claude/hooks/detect-languages.sh"}]}]'
     echo '           "PreToolUse" (matcher Write|Edit): [{"hooks": [{"type": "command", "command": "bash .claude/hooks/security-scan.sh"}]}]'
 fi
 
 # ── 4. CLAUDE.md ──────────────────────────────────────────────────────────────
 
-fetch_file "CLAUDE.md"
+CLAUDE_MD_DST="$TARGET/CLAUDE.md"
+
+if [ ! -f "$CLAUDE_MD_DST" ]; then
+    fetch_file "CLAUDE.md"
+elif grep -q "@guidelines/active.md" "$CLAUDE_MD_DST"; then
+    echo "  [SKIP] CLAUDE.md already references @guidelines/active.md"
+else
+    cat >> "$CLAUDE_MD_DST" <<'KITEOF'
+
+---
+
+<!-- Added by claude-code-kit — https://github.com/vivek43nit/claude-code-kit -->
+
+## Active Language Guidelines
+
+@guidelines/active.md
+
+## Universal Guidelines
+
+@guidelines/base.md
+KITEOF
+    echo "  [OK]   Merged claude-code-kit guideline imports into existing CLAUDE.md"
+fi
 
 # ── 5. .gitignore ─────────────────────────────────────────────────────────────
 
@@ -129,7 +173,17 @@ else
     echo "  [OK]   Created .gitignore with guidelines/active.md"
 fi
 
-# ── 6. CI instructions ────────────────────────────────────────────────────────
+# ── 6. Language detection ─────────────────────────────────────────────────────
+
+echo ""
+echo "Running language detection..."
+if (cd "$TARGET" && bash .claude/hooks/detect-languages.sh 2>/dev/null); then
+    echo "  [OK]   guidelines/active.md populated"
+else
+    echo "  [WARN] Language detection failed — will run automatically on first Claude Code session"
+fi
+
+# ── 7. CI instructions ────────────────────────────────────────────────────────
 
 CI_BASE="https://raw.githubusercontent.com/${REPO}/${BRANCH}/ci"
 
