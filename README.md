@@ -86,6 +86,27 @@ cp claude-code-kit/ci/gitlab/quality-gates.yml  your-project/.gitlab-ci.yml
 
 </details>
 
+## Auditing an Existing Project
+
+Run a two-phase audit: first checks your claude-code-kit setup, then checks your code against the active guidelines.
+
+**If you've already run the installer:**
+```bash
+claude "$(cat .claude/prompts/audit.md)"
+```
+
+**Without installing (fetches the prompt directly from GitHub):**
+```bash
+claude "$(curl -fsSL https://raw.githubusercontent.com/vivek43nit/claude-code-kit/main/.claude/prompts/audit.md)"
+```
+
+**What happens:**
+1. **Phase 1 — Setup**: Checks hooks, `settings.json`, `CLAUDE.md`, `.gitignore`, and diffs your `guidelines/` against the latest kit versions on GitHub.
+2. **You choose**: Fix setup issues first (recommended), or skip straight to the code audit.
+3. **Phase 2 — Code compliance**: Reads your source files and checks against active guidelines — testing pyramid, observability, security, dependencies, branching, API design. Only checks areas relevant to your project's languages.
+4. Writes `.claude/audit-report.md` with a full findings table.
+5. Prints the **migration command** — run it to get a step-by-step plan with confirmation before any changes are made.
+
 ## How Language Detection Works
 
 On every `UserPromptSubmit` event, `.claude/hooks/detect-languages.sh`:
