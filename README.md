@@ -8,7 +8,7 @@
 **The problem:** Every engineer on your team has a different Claude Code setup. Some use
 TDD, some don't. Security scanning is manual. Guidelines exist in a doc nobody reads.
 
-**This repo fixes that** — one `bash install.sh` command gives any project:
+**This repo fixes that** — one `curl` command gives any project:
 - Auto-detected language guidelines (Python, TypeScript, Go, Java, Kotlin, Rust, JavaScript)
 - Security scanning before every file write (hardcoded secrets, AWS keys, private keys)
 - Plan mode decision rules so Claude knows when to think before acting
@@ -34,28 +34,51 @@ Python · TypeScript · JavaScript · Go · Java · Kotlin · Rust
 
 ## Quick Start
 
-**Bootstrap a new or existing project:**
+### One-liner (no clone needed)
+
+**macOS / Linux / WSL / Git Bash — curl:**
 
 ```bash
-git clone https://github.com/vivek43nit/claude-code-kit
-bash claude-code-kit/install.sh /path/to/your/project
+curl -fsSL https://raw.githubusercontent.com/vivek43nit/claude-code-kit/main/remote-install.sh | bash -s -- /path/to/your/project
 ```
 
-Then copy the CI template for your platform:
+**wget:**
+
+```bash
+wget -qO- https://raw.githubusercontent.com/vivek43nit/claude-code-kit/main/remote-install.sh | bash -s -- /path/to/your/project
+```
+
+> **Windows (PowerShell / CMD):** Use WSL, Git Bash, or install curl — then run the curl command above.
+
+**Add CI quality gates (optional):**
 
 ```bash
 # GitHub Actions
 mkdir -p your-project/.github/workflows
-cp claude-code-kit/ci/github/quality-gates.yml \
-   your-project/.github/workflows/quality-gates.yml
+curl -fsSL https://raw.githubusercontent.com/vivek43nit/claude-code-kit/main/ci/github/quality-gates.yml \
+  -o your-project/.github/workflows/quality-gates.yml
 
 # GitLab CI
-cp claude-code-kit/ci/gitlab/quality-gates.yml \
-   your-project/.gitlab-ci.yml
+curl -fsSL https://raw.githubusercontent.com/vivek43nit/claude-code-kit/main/ci/gitlab/quality-gates.yml \
+  -o your-project/.gitlab-ci.yml
 ```
 
 Open Claude Code in your project, run `/reload-plugins`, and start a session.
 Language detection runs automatically — no further configuration needed.
+
+<details>
+<summary>Alternative: clone and run locally</summary>
+
+```bash
+git clone https://github.com/vivek43nit/claude-code-kit
+bash claude-code-kit/install.sh /path/to/your/project
+
+# CI templates (local copy)
+cp claude-code-kit/ci/github/quality-gates.yml your-project/.github/workflows/quality-gates.yml
+cp claude-code-kit/ci/gitlab/quality-gates.yml  your-project/.gitlab-ci.yml
+```
+
+</details>
 
 ## How Language Detection Works
 
