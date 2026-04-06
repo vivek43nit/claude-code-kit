@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash:*)",
+      "Bash(chmod +x:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(grep -E '\\\\$\\\\{.*:-' /Users/vivek/personal/code/claude-base-setup/.claude/hooks/detect-languages.sh)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(git commit:*)",
+      "Bash(python3 -c \"import json; json.load\\(open\\('.claude/settings.json'\\)\\); print\\('settings.json OK'\\)\")",
+      "Bash(python3 -c \"import yaml; yaml.safe_load\\(open\\('ci/github/quality-gates.yml'\\)\\); print\\('github CI OK'\\)\")",
+      "Bash(python3 -c \"import yaml; yaml.safe_load\\(open\\('ci/gitlab/quality-gates.yml'\\)\\); print\\('gitlab CI OK'\\)\")"
+    ]
+  }
+}

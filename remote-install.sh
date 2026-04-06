@@ -8,7 +8,7 @@
 #   wget -qO- https://raw.githubusercontent.com/vivek43nit/claude-code-kit/main/remote-install.sh | bash -s -- /path/to/project
 #
 # What it does (identical to install.sh, but sources files from GitHub):
-#   1. Downloads .claude/hooks/ scripts
+#   1. Downloads .claude/hooks/ scripts and .claude/prompts/
 #   2. Downloads guidelines/ markdown files
 #   3. Merges .claude/settings.json hooks (creates if absent; merges with jq if present)
 #   4. Merges CLAUDE.md guideline imports (creates if absent; appends if present)
@@ -66,6 +66,11 @@ chmod +x "$TARGET/.claude/hooks/detect-languages.sh"
 
 fetch_file ".claude/hooks/security-scan.sh"
 chmod +x "$TARGET/.claude/hooks/security-scan.sh"
+
+# ── 1b. Prompts ───────────────────────────────────────────────────────────────
+
+mkdir -p "$TARGET/.claude/prompts"
+fetch_file "prompts/audit.md"
 
 # ── 2. Guidelines ─────────────────────────────────────────────────────────────
 
