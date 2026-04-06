@@ -1,0 +1,210 @@
+# Quality Gates — copy to .gitlab-ci.yml in your project
+#
+# Gates enforced:
+#   1. Secret scanning (Gitleaks)
+#   2. Dependency vulnerability scan (Trivy)
+#   3. Language-specific lint + type check
+#   4. Tests with minimum 80% coverage
+
+stages:
+  - detect
+  - security
+  - lint
+  - test
+
+variables:
+  PY_DETECTED: "false"
+  TS_DETECTED: "false"
+  JS_DETECTED: "false"
+  GO_DETECTED: "false"
+  JAVA_DETECTED: "false"
+  KT_DETECTED: "false"
+  RUST_DETECTED: "false"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
+
+# ── Detect languages ────────────────────────────────────────────────────────
+
+detect-languages:
+  stage: detect
+  image: alpine:latest
+  script:
+    - apk add --no-cache bash findutils
+    - |
+      detect() {
+        [ -f "$1" ] 2>/dev/null && return 0
+        find . -maxdepth 4 -not -path "*/node_modules/*" -not -path "*/.git/*" \
+          -name "$2" 2>/dev/null | grep -q . && return 0
+        return 1
+      }
+      {
+        (detect pyproject.toml "*.py" || detect requirements.txt "*.py") &&
+          echo "PY_DETECTED=true" || echo "PY_DETECTED=false"
+        detect tsconfig.json "*.ts" && echo "TS_DETECTED=true" || echo "TS_DETECTED=false"
+        ! detect tsconfig.json "*.ts" && (detect package.json "*.js") &&
+          echo "JS_DETECTED=true" || echo "JS_DETECTED=false"
+        detect go.mod "*.go" && echo "GO_DETECTED=true" || echo "GO_DETECTED=false"
+        detect pom.xml "*.java" && echo "JAVA_DETECTED=true" || echo "JAVA_DETECTED=false"
+        detect build.gradle.kts "*.kt" && echo "KT_DETECTED=true" || echo "KT_DETECTED=false"
+        detect Cargo.toml "*.rs" && echo "RUST_DETECTED=true" || echo "RUST_DETECTED=false"
+      } | tee detect.env
+  artifacts:
+    reports:
+      dotenv: detect.env
+    expire_in: 1 hour
+
+# ── Security ────────────────────────────────────────────────────────────────
+
+security-secrets:
+  stage: security
+  image:
+    name: zricethezav/gitleaks:latest
+    entrypoint: [""]
+  script:
+    - gitleaks detect --source . --redact --no-git -v
+
+security-deps:
+  stage: security
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  script:
+    - trivy fs --exit-code 1 --severity HIGH,CRITICAL --no-progress .
+
+# ── Python ──────────────────────────────────────────────────────────────────
+
+lint-python:
+  stage: lint
+  image: python:3.12-slim
+  needs: [detect-languages]
+  rules:
+    - if: $PY_DETECTED == "true"
+  cache:
+    paths: [.cache/pip]
+  script:
+    - pip install ruff mypy --quiet
+    - ruff check .
+    - ruff format --check .
+    - mypy . --ignore-missing-imports
+
+test-python:
+  stage: test
+  image: python:3.12-slim
+  needs: [detect-languages]
+  rules:
+    - if: $PY_DETECTED == "true"
+  cache:
+    paths: [.cache/pip]
+  script:
+    - pip install -r requirements.txt pytest pytest-cov --quiet
+    - pytest --cov --cov-fail-under=80 --cov-report=xml:coverage.xml
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+# ── TypeScript ──────────────────────────────────────────────────────────────
+
+lint-typescript:
+  stage: lint
+  image: node:22-alpine
+  needs: [detect-languages]
+  rules:
+    - if: $TS_DETECTED == "true"
+  cache:
+    paths: [node_modules]
+  script:
+    - npm ci --silent
+    - npx tsc --noEmit
+    - npx eslint . --max-warnings 0
+
+test-typescript:
+  stage: test
+  image: node:22-alpine
+  needs: [detect-languages]
+  rules:
+    - if: $TS_DETECTED == "true"
+  cache:
+    paths: [node_modules]
+  script:
+    - npm ci --silent
+    - npx vitest run --coverage --coverage.thresholds.lines=80
+
+# ── Go ──────────────────────────────────────────────────────────────────────
+
+lint-go:
+  stage: lint
+  image: golangci/golangci-lint:latest
+  needs: [detect-languages]
+  rules:
+    - if: $GO_DETECTED == "true"
+  script:
+    - golangci-lint run ./...
+
+test-go:
+  stage: test
+  image: golang:1.23-alpine
+  needs: [detect-languages]
+  rules:
+    - if: $GO_DETECTED == "true"
+  script:
+    - go test -race -coverprofile=coverage.out ./...
+    - go tool cover -func=coverage.out
+    - |
+      COVERAGE=$(go tool cover -func=coverage.out | awk '/total:/{print substr($3, 1, length($3)-1)}')
+      if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+        echo "Coverage $COVERAGE% is below minimum 80%"
+        exit 1
+      fi
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+
+# ── Java ────────────────────────────────────────────────────────────────────
+
+test-java:
+  stage: test
+  image: maven:3.9-eclipse-temurin-21
+  needs: [detect-languages]
+  rules:
+    - if: $JAVA_DETECTED == "true"
+  cache:
+    paths: [.m2/repository]
+  variables:
+    MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+  script:
+    - mvn verify -B --no-transfer-progress
+
+# ── Rust ────────────────────────────────────────────────────────────────────
+
+lint-rust:
+  stage: lint
+  image: rust:slim
+  needs: [detect-languages]
+  rules:
+    - if: $RUST_DETECTED == "true"
+  cache:
+    paths: [.cargo, target]
+  script:
+    - rustup component add clippy rustfmt
+    - cargo fmt --check
+    - cargo clippy -- -D warnings
+
+test-rust:
+  stage: test
+  image: rust:slim
+  needs: [detect-languages]
+  rules:
+    - if: $RUST_DETECTED == "true"
+  cache:
+    paths: [.cargo, target]
+  script:
+    - cargo install cargo-tarpaulin cargo-audit --quiet
+    - cargo audit
+    - cargo tarpaulin --fail-under 80 --out Xml
+  coverage: '/^\d+.\d+% coverage/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: cobertura.xml
