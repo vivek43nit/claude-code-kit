@@ -9,7 +9,7 @@
     "claude-code-setup@claude-plugins-official": true
   },
   "hooks": {
-    "UserPromptSubmit": [
+    "SessionStart": [
       {
         "hooks": [
           {
