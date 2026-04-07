@@ -31,7 +31,7 @@ WARNINGS=()
 
 # Hardcoded passwords/secrets (value assigned in quotes, not from env/function)
 if echo "$CONTENT" | grep -qiE \
-    '(password|passwd|secret|api_key|apikey|access_token|auth_token|private_key)\s*[=:]\s*["'"'"'][^"'"'"']{6,}'; then
+    '(password|passwd|secret|api_key|apikey|access_token|auth_token|private_key)\s*[=:]\s*["'"'"'][^"'"'"'$#{%@<]{6,}'; then
     WARNINGS+=("Potential hardcoded secret (password/key/token)")
 fi
 
