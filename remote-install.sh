@@ -123,12 +123,12 @@ SETTINGS_DST="$TARGET/.claude/settings.json"
 if [ ! -f "$SETTINGS_DST" ]; then
     fetch_file ".claude/settings.json"
 elif command -v jq &>/dev/null; then
-    if jq -e '[.hooks.UserPromptSubmit[]?.hooks[]?] | map(select(.command == "bash .claude/hooks/detect-languages.sh")) | length > 0' "$SETTINGS_DST" &>/dev/null; then
+    if jq -e '[.hooks.SessionStart[]?.hooks[]?] | map(select(.command == "bash .claude/hooks/detect-languages.sh")) | length > 0' "$SETTINGS_DST" &>/dev/null; then
         echo "  [SKIP] .claude/settings.json already contains claude-code-kit hooks"
     else
         tmp="$(mktemp)"
         jq '
-          .hooks.UserPromptSubmit = ((.hooks.UserPromptSubmit // []) + [{"hooks": [{"type": "command", "command": "bash .claude/hooks/detect-languages.sh"}]}]) |
+          .hooks.SessionStart = ((.hooks.SessionStart // []) + [{"hooks": [{"type": "command", "command": "bash .claude/hooks/detect-languages.sh"}]}]) |
           .hooks.PreToolUse = ((.hooks.PreToolUse // []) + [{"matcher": "Write|Edit", "hooks": [{"type": "command", "command": "bash .claude/hooks/security-scan.sh"}]}])
         ' "$SETTINGS_DST" > "$tmp"
         if [ -s "$tmp" ]; then
@@ -143,7 +143,7 @@ elif command -v jq &>/dev/null; then
 else
     echo "  [WARN] .claude/settings.json already exists and jq is not installed."
     echo "         Install jq (brew install jq / apt install jq) and re-run to auto-merge, or add manually:"
-    echo '           "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "bash .claude/hooks/detect-languages.sh"}]}]'
+    echo '           "SessionStart": [{"hooks": [{"type": "command", "command": "bash .claude/hooks/detect-languages.sh"}]}]'
     echo '           "PreToolUse" (matcher Write|Edit): [{"hooks": [{"type": "command", "command": "bash .claude/hooks/security-scan.sh"}]}]'
 fi
 
