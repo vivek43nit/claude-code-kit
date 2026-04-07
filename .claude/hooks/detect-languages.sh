@@ -20,7 +20,7 @@ mkdir -p "$PROJECT_ROOT/guidelines"
 DETECTED=()
 
 has_files() {
-    find "$PROJECT_ROOT" -maxdepth 4 \
+    find "$PROJECT_ROOT" -maxdepth 6 \
         -not -path "*/node_modules/*" \
         -not -path "*/.git/*" \
         -not -path "*/vendor/*" \
@@ -28,7 +28,11 @@ has_files() {
 }
 
 manifest_exists() {
-    [ -f "$PROJECT_ROOT/$1" ]
+    find "$PROJECT_ROOT" \
+        -not -path "*/.git/*" \
+        -not -path "*/node_modules/*" \
+        -not -path "*/vendor/*" \
+        -name "$1" 2>/dev/null | grep -q .
 }
 
 # --- Detection ---
@@ -62,12 +66,12 @@ if manifest_exists "go.mod" || has_files "*.go"; then
 fi
 
 # Java
-if manifest_exists "pom.xml" || manifest_exists "build.gradle" || has_files "*.java"; then
+if manifest_exists "pom.xml" || manifest_exists "build.gradle"; then
     DETECTED+=("java")
 fi
 
 # Kotlin
-if manifest_exists "build.gradle.kts" || has_files "*.kt"; then
+if manifest_exists "build.gradle.kts"; then
     DETECTED+=("kotlin")
 fi
 
@@ -113,7 +117,10 @@ fi
 
 frontend=false
 for lang in "${DETECTED[@]+"${DETECTED[@]}"}"; do
-    [ "$lang" = "typescript" ] || [ "$lang" = "javascript" ] && frontend=true && break
+    if [ "$lang" = "typescript" ] || [ "$lang" = "javascript" ]; then
+        frontend=true
+        break
+    fi
 done
 
 {
