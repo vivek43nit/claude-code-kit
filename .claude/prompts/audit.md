@@ -15,7 +15,7 @@ Check each item below and mark ✓ (ok), ✗ (missing), or ~ (outdated/misconfig
 |------|-------|
 | `.claude/hooks/detect-languages.sh` | File exists? |
 | `.claude/hooks/security-scan.sh` | File exists? |
-| `.claude/settings.json` | Contains UserPromptSubmit hook running `bash .claude/hooks/detect-languages.sh`? |
+| `.claude/settings.json` | Contains SessionStart hook running `bash .claude/hooks/detect-languages.sh`? |
 | `.claude/settings.json` | Contains PreToolUse hook running `bash .claude/hooks/security-scan.sh`? |
 | `CLAUDE.md` | Contains `@guidelines/active.md`? |
 | `.gitignore` | Contains `guidelines/active.md`? |
@@ -117,7 +117,7 @@ Generated: <today's date>
 |------|--------|-------|
 | .claude/hooks/detect-languages.sh | | |
 | .claude/hooks/security-scan.sh | | |
-| .claude/settings.json — UserPromptSubmit hook | | |
+| .claude/settings.json — SessionStart hook | | |
 | .claude/settings.json — PreToolUse hook | | |
 | CLAUDE.md — @guidelines/active.md import | | |
 | .gitignore — guidelines/active.md | | |
